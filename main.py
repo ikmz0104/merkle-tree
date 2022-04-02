@@ -1,80 +1,55 @@
-from hashlib import sha256
+from unittest import TestCase
 
-class Node:
-    def __init__(self, data):
-        self.left     = None
-        self.right    = None
-        self.parent   = None
-        self.sibling  = None
-        self.position = None
-        self.data     = data
-        self.hash = sha256(data.encode()).hexdigest()
-       
-class Tree:
-    def __init__(self, leaves):
-        self.leaves = [Node(leaf) for leaf in leaves]
-        self.layer  = self.leaves[::]
-        self.root   = None
-        self.build_tree()
-    
-    def build_layer(self):
-        new_layer = []
-        
-        if len(self.layer) % 2 == 1:
-            self.layer.append(self.layer[-1])
-        
-        for i in range(0, len(self.layer), 2):
-            left = self.layer[i]
-            right = self.layer[i+1]
-            parent = Node(left.hash + right.hash)
-            
-            left.parent = parent
-            left.sibling = right
-            left.position = "left"
-            
-            right.parent = parent
-            right.sibling = left
-            right.position = "right"
-            
-            parent.left = left
-            parent.right = right
-            
-            new_layer.append(parent)
-        
-        self.layer = new_layer
-    
-    def build_tree(self):
-        while len(self.layer) > 1:
-            self.build_layer()
-        self.root = self.layer[0].hash
-    
-    def search(self, data):
-        target = None
-        hash_value = sha256(data.encode()).hexdigest()
-        for node in self.leaves:
-            if node.hash == hash_value:
-                target = node
-        return target
-    
-    def get_pass(self, data):
-        target = self.search(data)
-        markle_pass = []
-        if not(target):
-            return
-        markle_pass.append(target.hash)
-        while target.parent:
-            sibling = target.sibling
-            markle_pass.append((sibling.hash, sibling.position))
-            target = target.parent
-        return markle_pass   
-      
-def caluculator(markle_pass):
-    value = markle_pass[0]
-    for node in markle_pass[1:]:
-        sib = node[0]
-        position = node[1]
-        if position == "right":
-            value = sha256(value.encode() + sib.encode()).hexdigest()
-        else:
-            value = sha256(sib.encode() + value.encode()).hexdigest()
-    return value  
+import helper
+import merkleblock
+
+from block import Block
+from helper import (
+    bytes_to_bit_field,
+    hash256,
+    little_endian_to_int,
+    read_varint,
+)
+from merkleblock import (
+    MerkleBlock,
+    MerkleTree,
+)
+
+# 宣言した関数の引数は呼び出されるときに代入されるので一旦放置してOK
+# マークルルート:merkle_root関数を実行する際にhashes配列を与える
+
+#親ハッシュを計算する
+def merkle_parent(hash1, hash2):
+    '''Takes the binary hashes and calculates the hash256'''
+    return hash256(hash1 + hash2)
+
+#マークルペアレントレベルに対応する新しいハッシュリストを作成する
+def merkle_parent_level(hashes):
+    #hashes配列の長さが半分のリストを返す⇔best16右best8になるということ
+    if len(hashes) % 2 == 1:
+        hashes.append(hashes[-1])
+    elif len(hashes) % 2 == 0:
+        raise RuntimeError('Cannot take a parent level with only 1 item')
+
+    parent_level = []
+    for i in range(1, len(hashes), 2):
+      parent = merkle_parent(hashes[i], hashes[i+1])
+      parent_level.append(parent)
+    return(parent_level)
+  
+#マークルルートを求める
+def merkle_root(hashes):
+    current_parent_level = hashes
+    while len(current_parent_level) > 1:
+        current_parent_level = merkle_parent_level(current_parent_level)
+    print(current_parent_level[0])
+
+#トランザクションハッシュをブロックの初期化のパラメータとして設定・エンディアン問題の解決
+def validate_merkle_root(self):
+    hashes = [h[::-1] for h in self.tx_hashes]
+    root = merkle_root(hashes)
+    return root[::-1] == self.merkle_root
+
+
+#関数の実行
+merkle_root()
