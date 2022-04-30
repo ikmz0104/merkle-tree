@@ -1,4 +1,7 @@
 # マークルツリー
-- 原理を理解
-- 実装してみる
-- zkRollup確認
+- [Zenn](https://zenn.dev/link/comments/3ad86394dee14a)
+
+# デバッグ
+```
+jupyter notebook
+```
